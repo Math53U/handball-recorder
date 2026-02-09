@@ -1,12 +1,13 @@
 {
   "name": "Handball Recorder",
   "short_name": "HB Recorder",
-  "start_url": "/handball-recorder/",
+  "start_url": "/handball-recorder/index.html",
   "scope": "/handball-recorder/",
   "display": "standalone",
   "background_color": "#1a1a2e",
   "theme_color": "#1a1a2e"
 }
+
 
 
 
