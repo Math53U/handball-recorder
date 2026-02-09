@@ -1,0 +1,2168 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <!-- ===== HTMLヘッダ ===== -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ハンドボール試合記録</title>
+    
+  <!-- ===== PWA関連 ===== -->
+  <link rel="manifest" href="manifest.json">
+
+    <!-- ===== CSSここから ===== -->
+    <style>
+        /* 全体の基本設定 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            overflow: auto;
+            min-height: 100vh;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* メイン画面とモーダルの切り替え */
+        .screen {
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        /* メイン記録画面のレイアウト */
+        .main-screen {
+            display: grid;
+            grid-template-columns: 1fr;
+            grid-template-rows: auto auto 1fr auto;
+            gap: 1vw;
+            padding: 1vw;
+            min-height: 100vh;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* 1行目：タイマー、スコア、アクションボタン */
+        .top-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1vw;
+        }
+
+        .timer-area {
+            grid-column: 1;
+        }
+
+        .score-area {
+            grid-column: 2;
+        }
+
+        .action-area {
+            grid-column: 3 / span 2;
+        }
+
+        /* 2行目：シュート位置、自チーム、相手チーム */
+        .middle-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1vw;
+        }
+
+        .goal-area {
+            grid-column: 1 / span 2;
+        }
+
+        .my-team-area {
+            grid-column: 3;
+        }
+
+        .opponent-team-area {
+            grid-column: 4;
+        }
+
+
+        /* 3行目：記録・統計ボタン */
+        .bottom-row {
+            width: 100%;
+        }
+
+        .bottom-buttons {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1vw;
+            width: 100%;
+        }
+
+
+        /* タイマーエリア */
+        .timer-area {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 1.5vw;
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .timer-display {
+            font-size: 3vw;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 0.5vh;
+            color: #4ecdc4;
+            text-shadow: 0 0 20px rgba(78, 205, 196, 0.5);
+        }
+
+        .timer-sub {
+            font-size: 1.2vw;
+            text-align: center;
+            color: #aaa;
+            margin-bottom: 1vh;
+        }
+
+        .timer-controls {
+            display: flex;
+            gap: 0.5vw;
+            justify-content: center;
+        }
+
+        .timer-btn {
+            padding: 1vh 1.5vw;
+            border: none;
+            border-radius: 8px;
+            font-size: 1vw;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+
+        .timer-btn.start {
+            background: #4ecdc4;
+            color: #1a1a2e;
+        }
+
+        .timer-btn.pause {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .timer-btn.reset {
+            background: #95a5a6;
+            color: white;
+        }
+
+        .timer-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        /* 前後半切り替えボタン */  
+        .half-switch {
+            margin-top: 0.8vh;
+            text-align: center;
+        }
+
+        #halfBtn {
+            padding: 0.5vh 1vw;
+            font-size: 0.9vw;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            background: #4ecdc4;
+            color: #1a1a2e;
+            font-weight: bold;
+        }
+
+        #halfBtn.second {
+            background: #ff6b6b;
+            color: white;
+        }
+
+
+
+
+        /* ゴールエリア */
+        .goal-area {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 1vw;
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .goal-title {
+            text-align: center;
+            margin-bottom: 1vh;
+            font-size: 2vw;
+            font-weight: bold;
+        }
+
+        .goal-grid {
+            display: grid;
+            grid-template-columns: 4vw 1fr 4vw;
+            grid-template-rows: 3vh 1fr 3vh;
+            gap: 0.5vw;
+            height: calc(100% - 4vh);
+        }
+
+        .goal-grid {
+            display: grid;
+            grid-template-columns: 60px 1fr 60px;
+            grid-template-rows: 40px 1fr 40px;
+            gap: 8px;
+            height: calc(100% - 50px);
+        }
+
+        /* ゴール外ボタン（コーナー） */
+        .goal-btn.corner-tl {
+            grid-column: 1;
+            grid-row: 1;
+        }
+
+        .goal-btn.corner-top {
+            grid-column: 2;
+            grid-row: 1;
+        }
+
+        .goal-btn.corner-tr {
+            grid-column: 3;
+            grid-row: 1;
+        }
+
+        /* 左右の横外ボタン（縦長） */
+        .goal-btn.side-left {
+            grid-column: 1;
+            grid-row: 2;
+        }
+
+        .goal-btn.side-right {
+            grid-column: 3;
+            grid-row: 2;
+        }
+
+        /* ゴール内の6分割 */
+        .goal-inner {
+            grid-column: 2;
+            grid-row: 2;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 6px;
+            background: rgba(255, 255, 255, 0.15);
+            padding: 8px;
+            border-radius: 8px;
+            border: 3px solid #4ecdc4;
+        }
+
+        .goal-btn {
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 1vw;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: bold;
+        }
+
+        .goal-btn:hover {
+            background: rgba(78, 205, 196, 0.3);
+            transform: scale(1.05);
+        }
+
+        .goal-btn:active {
+            background: rgba(78, 205, 196, 0.5);
+        }
+
+        /* ゴール位置選択後の別画面設定 */
+        .action-btn {
+            flex: 1;
+            padding: 12px;
+            font-size: 20px;
+
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+
+            border-radius: 12px;
+        }
+
+        /* 色だけ分離 */
+        .result-goal {
+            background: linear-gradient(135deg, #4ecdc4, #44a08d);
+        }
+
+        .result-saved {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a6f);
+        }
+
+        .result-miss {
+            background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+        }
+
+
+
+        /* 自チーム背番号エリア */
+        .my-team-area {
+            background: rgba(78, 205, 196, 0.15);
+            border-radius: 12px;
+            padding: 1vw;
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(78, 205, 196, 0.3);
+            overflow-y: auto;
+        }
+
+        .team-title {
+            text-align: center;
+            margin-bottom: 1vh;
+            font-size: 1.3vw;
+            font-weight: bold;
+            color: #4ecdc4;
+        }
+
+        .player-grid {
+            display: grid;
+            grid-template-rows: repeat(10, 1fr);
+            grid-auto-flow: column;
+            gap: 0.4vw;
+            flex: 1;
+        }
+
+        .player-btn {
+            width: 100%;
+            height: 100%;
+
+            padding: 0.4vh 0.5vw;
+
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+
+            border: 2px solid rgba(78, 205, 196, 0.5);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+            font-size: 0.9vw;
+            box-sizing: border-box;
+        }
+
+        .player-btn:hover {
+            background: rgba(78, 205, 196, 0.3);
+            transform: translateX(5px);
+        }
+
+        .player-btn.selected {
+            background: #4ecdc4;
+            color: #1a1a2e;
+            font-weight: bold;
+        }
+
+        .player-number {
+            font-size: 1.2vw;
+            font-weight: bold;
+            margin-bottom: 0.2vh;
+        }
+
+        .player-name {
+            font-size: 0.8vw;
+            opacity: 0.9;
+        }
+
+        /* 相手チーム背番号エリア */
+        .opponent-team-area {
+            display: flex;
+            flex-direction: column;
+            background: rgba(255, 107, 107, 0.15);
+            border-radius: 12px;
+            padding: 1vw;
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 107, 107, 0.3);
+            overflow-y: auto;
+        }
+
+        .opponent-team-area .team-title {
+            color: #ff6b6b;
+        }
+
+        .opponent-team-area .player-btn {
+            border-color: rgba(255, 107, 107, 0.5);
+            text-align: left;
+        }
+
+        .opponent-team-area .player-btn:hover {
+            background: rgba(255, 107, 107, 0.3);
+        }
+
+        .opponent-team-area .player-btn.selected {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        /* 下部ボタンエリア */
+        .bottom-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1vw;
+        }
+
+        .bottom-btn {
+            padding: 1.5vh;
+            border: 2px solid rgba(78, 205, 196, 0.3);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 1.3vw;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            backdrop-filter: blur(10px);
+        }
+
+        .bottom-btn:hover {
+            background: rgba(78, 205, 196, 0.3);
+            transform: translateY(-3px);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .bottom-btn.records {
+            background: linear-gradient(135deg, rgba(78, 205, 196, 0.3), rgba(68, 160, 141, 0.3));
+        }
+
+        .bottom-btn.stats {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.3), rgba(118, 75, 162, 0.3));
+        }
+
+        /* 状態表示 */
+        .status-display {
+            position: fixed;
+            bottom: 2vh;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 1vh 2vw;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            font-size: 1vw;
+            text-align: center;
+            min-width: 30vw;
+            z-index: 50;
+        }
+
+        .status-text {
+            margin: 0;
+        }
+
+        /* スコア表示エリア */
+        .score-area {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            padding: 1.5vw;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .score-label {
+            font-size: 2vw;
+            opacity: 0.9;
+            margin-bottom: 1vh;
+        }
+
+        .score-text {
+            font-size: 4vw;
+            font-weight: bold;
+        }
+
+        .half-score {
+            margin-top: 0.8vh;
+            font-size: 1.5vw;
+            text-align: center;
+            opacity: 0.85;
+            line-height: 1.4;
+        }
+
+
+        /* アクションエリア */
+        .action-area {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 1vw;
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            overflow-y: auto;
+        }
+
+        .action-title {
+            text-align: center;
+            font-size: 2vw;
+            font-weight: bold;
+            margin-bottom: 1vh;
+        }
+
+        .action-buttons {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 1vw;
+        }
+
+        .action-main {
+            padding: 1vh 0.5vw;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            aspect-ratio: 1 / 1;
+            font-size: 1vw;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .action-main:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-3px);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .action-main.shoot {
+            background: linear-gradient(135deg, #4ecdc4, #44a08d);
+        }
+
+        .action-main.seven-m {
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+        }
+
+        .action-main.warning {
+            background: linear-gradient(135deg, #ffd89b, #ff9a76);
+        }
+
+        .action-main.two-min {
+            background: linear-gradient(135deg, #fa709a, #fee140);
+        }
+
+        .action-main.expulsion {
+            background: linear-gradient(135deg, #30cfd0, #330867);
+        }
+
+        /* 状態表示 */
+        .status-display {
+            margin-top: auto;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .status-text {
+            margin-bottom: 5px;
+        }
+
+        /* 設定ボタン */
+        .settings-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 24px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            z-index: 100;
+        }
+
+        .settings-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* モーダル（設定画面・記録表示） */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #1a1a2e;
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            border: 2px solid rgba(78, 205, 196, 0.5);
+        }
+
+        .modal-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #4ecdc4;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid rgba(78, 205, 196, 0.3);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 16px;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #4ecdc4;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 30px;
+        }
+
+        .modal-btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .modal-btn.save {
+            background: #4ecdc4;
+            color: #1a1a2e;
+        }
+
+        .modal-btn.cancel {
+            background: #95a5a6;
+            color: white;
+        }
+
+        .modal-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-btn.danger {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        /* 記録一覧テーブル */
+        .records-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .records-table th,
+        .records-table td {
+            padding: 10px;
+            border: 1px solid rgba(78, 205, 196, 0.3);
+            text-align: left;
+        }
+
+        .records-table th {
+            background: rgba(78, 205, 196, 0.2);
+            font-weight: bold;
+        }
+
+        .records-table tr:nth-child(even) {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        /* スクロールバーのスタイル */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(78, 205, 196, 0.5);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(78, 205, 196, 0.8);
+        }
+
+        /* 選手登録フォーム */
+        .players-form {
+            display: grid;
+            grid-template-columns: 60px 1fr 80px;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .players-list {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+
+        .player-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .delete-btn {
+            padding: 6px 12px;
+            background: #ff6b6b;
+            border: none;
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .delete-btn:hover {
+            background: #ff5252;
+        }
+
+        /* 統計表示用のスタイル */
+        .stats-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 8px;
+            border: 2px solid rgba(78, 205, 196, 0.3);
+        }
+
+        .stat-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #4ecdc4;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .stat-item:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            font-size: 14px;
+        }
+
+        .stat-value {
+            font-size: 14px;
+            font-weight: bold;
+            color: #4ecdc4;
+        }
+
+        /* グラフ用のスタイル */
+        .chart-container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .chart-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #4ecdc4;
+        }
+
+        .bar-chart {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .bar-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .bar-label {
+            min-width: 100px;
+            font-size: 14px;
+        }
+
+        .bar-bg {
+            flex: 1;
+            height: 25px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4ecdc4, #44a08d);
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 8px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .bar-value {
+            min-width: 40px;
+            text-align: right;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        /* タブ切り替え用 */
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid rgba(78, 205, 196, 0.3);
+        }
+
+        .tab-btn {
+            padding: 10px 20px;
+            background: transparent;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .tab-btn:hover {
+            background: rgba(78, 205, 196, 0.1);
+        }
+
+        .tab-btn.active {
+            border-bottom-color: #4ecdc4;
+            color: #4ecdc4;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+  <!-- ===== CSSここまで ===== -->
+</head>
+<body>
+
+  <!-- ===== HTMLここから ===== -->
+
+    <!-- 画面全体 -->
+    <div id="app">
+    <!-- メイン記録画面 -->
+    <div class="main-screen screen active" id="mainScreen">
+        <!-- 設定ボタン -->
+        <button class="settings-btn" onclick="openSettings()">⚙️ 設定</button>
+
+        <!-- 1行目：タイマー、スコア、アクション -->
+        <div class="top-row">
+            <!-- タイマーエリア -->
+            <div class="timer-area">
+                <div class="timer-display" id="timerDisplay">00:00</div>
+                <div class="timer-sub" id="timerSub">残り 25:00</div>
+                <div class="timer-controls">
+                    <button class="timer-btn start" onclick="startTimer()">▶</button>
+                    <button class="timer-btn pause" onclick="pauseTimer()">⏸</button>
+                    <button class="timer-btn reset" onclick="resetTimer()">⏹</button>
+                </div>
+            <!-- 前半／後半切り替え -->
+                <div class="half-switch">
+                    <button id="halfBtn" onclick="toggleHalf()">前半</button>
+                </div>
+            </div>
+
+            <!-- スコア表示エリア -->
+            <div class="score-area">
+                <div class="score-label">スコア</div>
+                <div class="score-text" id="scoreDisplay">0 - 0</div>
+                
+                <!-- 前半・後半スコア -->
+                <div class="half-score">
+                    <div>前半：<span id="firstHalfScore">0 - 0</span></div>
+                    <div>後半：<span id="secondHalfScore">0 - 0</span></div>
+                </div>
+            </div>
+
+            <!-- アクションエリア -->
+            <div class="action-area">
+                <div class="action-title">アクション</div>
+                <div class="action-buttons">
+                    <button class="action-main shoot" onclick="selectAction('shoot')">シュート</button>
+                    <button class="action-main seven-m" onclick="selectAction('7m')">7m</button>
+                    <button class="action-main warning" onclick="selectAction('warning')">警告</button>
+                    <button class="action-main two-min" onclick="selectAction('2min')">2分退場</button>
+                    <button class="action-main expulsion" onclick="selectAction('expulsion')">追放</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2行目：ゴール、自チーム、相手チーム -->
+        <div class="middle-row">
+            <!-- ゴールエリア -->
+            <div class="goal-area">
+                <div class="goal-title">シュート位置</div>
+                <div class="goal-grid">
+                    <!-- 上段の外ボタン -->
+                    <button class="goal-btn corner-tl" onclick="selectGoalLocation('left-top-out')">左上外</button>
+                    <button class="goal-btn corner-top" onclick="selectGoalLocation('center-top-out')">真上外</button>
+                    <button class="goal-btn corner-tr" onclick="selectGoalLocation('right-top-out')">右上外</button>
+
+                    <!-- 左横外（縦長） -->
+                    <button class="goal-btn side-left" onclick="selectGoalLocation('left-side-out')">左横外</button>
+
+                    <!-- ゴール内6分割 -->
+                    <div class="goal-inner">
+                        <button class="goal-btn" onclick="selectGoalLocation('left-top-in')">左上</button>
+                        <button class="goal-btn" onclick="selectGoalLocation('center-top-in')">中上</button>
+                        <button class="goal-btn" onclick="selectGoalLocation('right-top-in')">右上</button>
+                        <button class="goal-btn" onclick="selectGoalLocation('left-bottom-in')">左下</button>
+                        <button class="goal-btn" onclick="selectGoalLocation('center-bottom-in')">中下</button>
+                        <button class="goal-btn" onclick="selectGoalLocation('right-bottom-in')">右下</button>
+                    </div>
+
+                    <!-- 右横外（縦長） -->
+                    <button class="goal-btn side-right" onclick="selectGoalLocation('right-side-out')">右横外</button>
+                </div>
+            </div>
+
+            <!-- 自チーム背番号エリア -->
+            <div class="my-team-area">
+                <div class="team-title">自チーム</div>
+                <div class="player-grid" id="myTeamPlayersGrid">
+                    <!-- JavaScriptで動的に生成 -->
+                </div>
+            </div>
+
+            <!-- 相手チーム背番号エリア -->
+            <div class="opponent-team-area">
+                <div class="team-title">相手チーム</div>
+                <div class="player-grid" id="opponentTeamPlayersGrid">
+                    <!-- JavaScriptで動的に生成 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 3行目：下部ボタン -->
+        <div class="bottom-row">
+            <div class="bottom-buttons">
+                <button class="bottom-btn records" onclick="showRecords()">📋 記録を表示</button>
+                <button class="bottom-btn stats" onclick="showStats()">📊 統計を表示</button>
+            </div>
+        </div>
+
+        <!-- 状態表示 -->
+        <div class="status-display">
+            <div class="status-text" id="statusText">待機中...</div>
+        </div>
+    </div>
+
+  <!-- モーダル（結果選択など） -->
+    <!-- 設定モーダル -->
+    <div class="modal" id="settingsModal">
+        <div class="modal-content">
+            <div class="modal-title">試合設定</div>
+            
+            <div class="form-group">
+                <label class="form-label">ハーフタイム（分）</label>
+                <input type="number" class="form-input" id="halfTimeInput" value="25">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">自チーム選手登録</label>
+                <div class="players-form">
+                    <input type="number" class="form-input" id="playerNumber" placeholder="番号" min="1" max="99">
+                    <input type="text" class="form-input" id="playerName" placeholder="名前">
+                    <button class="modal-btn save" onclick="addPlayer()">追加</button>
+                </div>
+                <div class="players-list" id="playersList">
+                    <!-- 登録された選手一覧 -->
+                </div>
+            </div>
+
+            <div class="modal-buttons">
+                <button class="modal-btn danger" onclick="resetMatchData()">🗑 試合データをリセット</button>
+                <button class="modal-btn cancel" onclick="closeSettings()">キャンセル</button>
+                <button class="modal-btn save" onclick="saveSettings()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 記録表示モーダル -->
+    <div class="modal" id="recordsModal">
+        <div class="modal-content" style="max-width: 900px;">
+            <div class="modal-title">試合記録一覧</div>
+            <table class="records-table">
+                <thead>
+                    <tr>
+                        <th>時刻</th>
+                        <th>チーム</th>
+                        <th>選手</th>
+                        <th>アクション</th>
+                        <th>位置</th>
+                        <th>結果</th>
+                    </tr>
+                </thead>
+                <tbody id="recordsTableBody">
+                    <!-- JavaScriptで動的に生成 -->
+                </tbody>
+            </table>
+            <div class="modal-buttons">
+                <button class="modal-btn save" onclick="exportRecords()">📥 CSV出力</button>
+                <button class="modal-btn cancel" onclick="closeRecords()">閉じる</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 統計表示モーダル -->
+    <div class="modal" id="statsModal">
+        <div class="modal-content" style="max-width: 1000px;">
+            <div class="modal-title">試合統計</div>
+            
+            <!-- タブ切り替え -->
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab('summary')">試合サマリー</button>
+                <button class="tab-btn" onclick="switchTab('player')">選手別統計</button>
+                <button class="tab-btn" onclick="switchTab('keeper')">キーパー分析</button>
+            </div>
+
+            <!-- 試合サマリータブ -->
+            <div class="tab-content active" id="summaryTab">
+                <div class="stats-container">
+                    <div class="stat-card">
+                        <div class="stat-title">自チーム</div>
+                        <div id="myTeamSummary"></div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-title">相手チーム</div>
+                        <div id="opponentTeamSummary"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 選手別統計タブ -->
+            <div class="tab-content" id="playerTab">
+                <div class="chart-container">
+                    <div class="chart-title">自チーム - 選手別得点</div>
+                    <div class="bar-chart" id="myTeamPlayerStats"></div>
+                </div>
+                <div class="chart-container" style="margin-top: 20px;">
+                    <div class="chart-title">自チーム - 選手別シュート成功率</div>
+                    <div class="bar-chart" id="myTeamShootStats"></div>
+                </div>
+            </div>
+
+            <!-- キーパー分析タブ -->
+            <div class="tab-content" id="keeperTab">
+                <div class="chart-container">
+                    <div class="chart-title">相手キーパー - エリア別セーブ率</div>
+                    <div class="bar-chart" id="keeperAreaStats"></div>
+                </div>
+                <div class="chart-container" style="margin-top: 20px;">
+                    <div class="chart-title">相手キーパー - 弱点分析</div>
+                    <div id="keeperAnalysis"></div>
+                </div>
+            </div>
+
+            <div class="modal-buttons">
+                <button class="modal-btn cancel" onclick="closeStats()">閉じる</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- シュート結果選択モーダル -->
+    <div class="modal" id="resultModal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-title">シュート結果を選択</div>
+            <div style="display: flex; flex-direction: row; gap: 15px; margin-top: 30px;">
+                <button class="action-btn result-goal" onclick="selectResult('goal')">
+                    <div>⚽</div>
+                    <div id="resultGoalText">入った</div>
+                </button>
+
+                <button class="action-btn result-saved" onclick="selectResult('saved')">
+                    <div>🧤</div>
+                    <div id="resultSavedText">止められた</div>
+                </button>
+
+                <button class="action-btn result-miss" onclick="selectResult('miss')">
+                    <div>❌</div>
+                    <div>外した</div>
+                </button>
+
+            </div>
+            <div class="modal-buttons" style="margin-top: 30px;">
+                <button class="modal-btn cancel" onclick="closeResultModal()">キャンセル</button>
+            </div>
+        </div>
+    </div>
+
+  <!-- ===== JavaScriptここから ===== -->
+    <script>
+        // ========================================
+        // グローバル変数の定義
+        // ========================================
+        
+        let myTeamPlayers = [];
+
+        // タイマー関連の変数
+        let timerSeconds = 0;           // 経過時間（秒）
+        let timerInterval = null;       // タイマーのインターバルID
+        let isTimerRunning = false;     // タイマーが動作中かどうか
+        let halfTime = 25;              // ハーフタイムの長さ（分）
+        let currentHalf = 1;            // 1 = 前半, 2 = 後半
+
+
+        // 記録データの配列
+        let records = [];
+
+        // 現在の入力状態を保持する変数
+        let currentAction = null;       // 現在選択中のアクション（shoot, 7m, warning, 2min, expulsion）
+        let currentTeam = null;         // 現在選択中のチーム（my, opponent）
+        let currentPlayer = null;       // 現在選択中の選手番号
+        let currentLocation = null;     // 現在選択中のシュート位置
+
+
+        // 相手チームの背番号（1-20）
+        let opponentNumbers = Array.from({length: 20}, (_, i) => i + 1);
+
+        // ========================================
+        // 初期化処理
+        // ========================================
+
+        // ページ読み込み時に実行
+        window.onload = function() {
+            // LocalStorageから保存データを読み込む
+            loadFromLocalStorage();
+            // ★必ず配列に矯正（ここが重要）
+            if (!Array.isArray(myTeamPlayers)) {
+                console.warn("onload時にmyTeamPlayersを矯正:", myTeamPlayers);
+                myTeamPlayers = [];
+            }
+            // 画面に選手ボタンを表示
+            renderPlayers();
+            // タイマー表示を更新
+            updateTimerDisplay();
+            // スコア表示を更新
+            updateScoreDisplay();
+        };
+
+        // ========================================
+        // タイマー機能
+        // ========================================
+
+        // タイマーを開始する
+        function startTimer() {
+            if (!isTimerRunning) {
+                isTimerRunning = true;
+                // 1秒ごとにtimerTickを実行
+                timerInterval = setInterval(timerTick, 1000);
+                // タイマー作動中はハーフタイムボタンを停止
+                document.getElementById('halfBtn').disabled = true;
+
+            }
+        }
+
+        // タイマーを一時停止する
+        function pauseTimer() {
+            isTimerRunning = false;
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+                // 一時停止中にはハーフタイムボタン使用可
+                document.getElementById('halfBtn').disabled = false;
+            }
+        }
+
+        // タイマーをリセットする（0に戻す）
+        function resetTimer() {
+            pauseTimer();
+            timerSeconds = 0;
+            updateTimerDisplay();
+            // 一時停止中にはハーフタイムボタン使用可
+            document.getElementById('halfBtn').disabled = false;
+        }
+
+        // タイマーの1秒ごとの処理
+        function timerTick() {
+            timerSeconds++;
+            updateTimerDisplay();
+        }
+
+        // タイマー表示を更新する
+        function updateTimerDisplay() {
+            // 経過時間を分:秒の形式に変換
+            const minutes = Math.floor(timerSeconds / 60);
+            const seconds = timerSeconds % 60;
+            const timeString = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            document.getElementById('timerDisplay').textContent = timeString;
+
+            // 残り時間を計算
+            const remainingSeconds = (halfTime * 60) - timerSeconds;
+            const remainingMinutes = Math.floor(remainingSeconds / 60);
+            const remainingSecs = remainingSeconds % 60;
+            const remainingString = remainingSeconds >= 0 
+                ? `残り ${String(remainingMinutes).padStart(2, '0')}:${String(remainingSecs).padStart(2, '0')}`
+                : '延長中';
+            document.getElementById('timerSub').textContent = remainingString;
+        }
+
+        //　前後半の切り替え
+        function toggleHalf() {
+            // 前半 → 後半 に切り替えるときだけ確認
+            if (currentHalf === 1) {
+                const ok = confirm("前半を終了して後半に切り替えます。\nタイマーはリセットされます。\nよろしいですか？");
+
+                if (!ok) return; // キャンセルされたら何もしない
+            }
+
+            //　切り替え
+            currentHalf = currentHalf === 1 ? 2 : 1;
+
+            const btn = document.getElementById('halfBtn');
+
+            if (currentHalf === 1) {
+                btn.textContent = '前半';
+                btn.classList.remove('second');
+            } else {
+                btn.textContent = '後半';
+                btn.classList.add('second');
+
+                // ★ 後半に入ったらタイマーリセット
+                resetTimer();
+            }
+        }
+
+
+        // ========================================
+        // 選手ボタンの表示
+        // ========================================
+
+        // 選手ボタンをHTMLに描画する
+        function renderPlayers() {
+            // ★保険：ここでも配列チェック
+            if (!Array.isArray(myTeamPlayers)) {
+                console.warn("renderPlayers内で矯正:", myTeamPlayers);
+                myTeamPlayers = [];
+            }
+
+            // 自チームの選手ボタンを生成
+            const myTeamContainer = document.getElementById('myTeamPlayersGrid');
+            myTeamContainer.innerHTML = '';
+            
+
+
+            // 1〜20番を必ず生成
+            for (let num = 1; num <= 20; num++) {
+
+                // 登録済み選手を探す
+                const player = myTeamPlayers.find(p => p.number === num);
+
+                const btn = document.createElement('button');
+                btn.className = 'player-btn';
+                btn.onclick = () => selectPlayer('my', num);
+
+                btn.innerHTML = `
+                    <div class="player-number">#${num}</div>
+                    <div class="player-name">
+                        ${player ? player.name + (player.isGK ? ' (GK)' : '') : ''}
+                    </div>
+            `;  
+
+                // 未登録番号なら見た目を変える（任意）
+                if (!player) {
+                    btn.classList.add('empty');
+                }
+
+                    myTeamContainer.appendChild(btn);
+            }
+
+            // 相手チームの背番号ボタンを生成（1-10が左列、11-20が右列）
+            const opponentContainer = document.getElementById('opponentTeamPlayersGrid');
+            opponentContainer.innerHTML = '';
+            
+            // 1-10番
+            opponentNumbers.filter(n => n <= 10).forEach(num => {
+                const btn = document.createElement('button');
+                btn.className = 'player-btn';
+                btn.onclick = () => selectPlayer('opponent', num);
+                btn.innerHTML = `<div class="player-number">#${num}</div>`;
+                opponentContainer.appendChild(btn);
+            });
+            
+            // 11-20番
+            opponentNumbers.filter(n => n >= 11).forEach(num => {
+                const btn = document.createElement('button');
+                btn.className = 'player-btn';
+                btn.onclick = () => selectPlayer('opponent', num);
+                btn.innerHTML = `<div class="player-number">#${num}</div>`;
+                opponentContainer.appendChild(btn);
+            });
+        }   
+
+        // ========================================
+        // アクション選択
+        // ========================================
+
+        // アクションボタンがクリックされた時の処理
+        function selectAction(action) {
+            currentAction = action;
+            // 選択状態をクリア
+            currentTeam = null;
+            currentPlayer = null;
+            currentLocation = null;
+            
+            // ステータス表示を更新
+            updateStatus(`${getActionName(action)}を選択 → 選手を選んでください`);
+        }
+
+        // ========================================
+        // 選手選択
+        // ========================================
+
+        // 選手ボタンがクリックされた時の処理
+        function selectPlayer(team, playerNumber) {
+            // アクションが選択されていない場合は何もしない
+            if (!currentAction) {
+                updateStatus('先にアクションを選択してください');
+                return;
+            }
+
+            currentTeam = team;
+            currentPlayer = playerNumber;
+
+            // 選手ボタンの選択状態を視覚的に表示
+            document.querySelectorAll('.player-btn').forEach(btn => btn.classList.remove('selected'));
+            event.target.closest('.player-btn').classList.add('selected');
+
+            // シュートまたは7mの場合はゴール位置の選択へ
+            if (currentAction === 'shoot' || currentAction === '7m') {
+                updateStatus(`${getTeamName(team)} #${playerNumber} → シュート位置を選んでください`);
+            } else {
+                // 警告・退場系はここで記録完了
+                recordEvent(null);
+            }
+        }
+
+        // ========================================
+        // ゴール位置選択
+        // ========================================
+
+        // ゴール位置ボタンがクリックされた時の処理
+        function selectGoalLocation(location) {
+            // シュート系アクションと選手が選択されていることを確認
+            if ((currentAction !== 'shoot' && currentAction !== '7m') || !currentPlayer) {
+                updateStatus('シュートアクションと選手を先に選択してください');
+                return;
+            }
+
+            currentLocation = location;
+
+            // ゴール内の位置なら「入った・止められた」を選択
+            if (location.endsWith('-in')) {
+                showResultSelection();
+            } else {
+                // ゴール外なら「外した」として記録
+                recordEvent('miss');
+            }
+        }
+
+        // ========================================
+        // シュート結果選択
+        // ========================================
+
+        // シュート結果を選択するモーダルを表示
+        function showResultSelection() {
+            // チームによってボタンのテキストを変更
+            const goalText = document.getElementById('resultGoalText');
+            const savedText = document.getElementById('resultSavedText');
+            
+            if (currentTeam === 'my') {
+                // 自チームの場合
+                goalText.textContent = '入った';
+                savedText.textContent = '止められた';
+            } else {
+                // 相手チームの場合
+                goalText.textContent = '入れられた';
+                savedText.textContent = '止めた';
+            }
+            
+            document.getElementById('resultModal').classList.add('active');
+        }
+
+        // シュート結果モーダルを閉じる
+        function closeResultModal() {
+            document.getElementById('resultModal').classList.remove('active');
+            // モーダルを閉じたら選択状態もリセット
+            resetSelection();
+        }
+
+        // シュート結果が選択された時の処理
+        function selectResult(result) {
+            // モーダルを閉じる
+            document.getElementById('resultModal').classList.remove('active');
+            // 記録を保存
+            recordEvent(result);
+        }
+
+        // ========================================
+        // 記録の保存
+        // ========================================
+
+        // イベントを記録配列に追加する
+        function recordEvent(result) {
+            // 現在時刻を取得
+            const currentTime = getCurrentTimeString();
+
+            // 記録データオブジェクトを作成
+            const record = {
+                time: currentTime,              // 試合時刻
+                team: currentTeam,              // my or opponent
+                playerNumber: currentPlayer,    // 選手番号
+                action: currentAction,          // アクション種別
+                location: currentLocation,      // シュート位置（シュート系のみ）
+                result: result,                  // シュート結果（goal, saved, miss）
+                half: currentHalf               // ★ 前半:1 / 後半:2
+            };
+
+            // 記録配列に追加
+            records.push(record);
+
+            // LocalStorageに保存
+            saveToLocalStorage();
+
+            // スコア表示を更新
+            updateScoreDisplay();
+
+            // ステータス表示を更新
+            updateStatus(`記録しました: ${formatRecord(record)}`);
+
+            // 選択状態をクリア
+            resetSelection();
+        }
+
+        // ========================================
+        // スコア計算と表示
+        // ========================================
+
+        // スコアを計算して表示を更新
+
+        function updateScoreDisplay() {
+            let myFirst = 0;
+            let oppFirst = 0;
+            let mySecond = 0;
+            let oppSecond = 0;
+
+            records.forEach(record => {
+                if (record.result === 'goal') {
+                    if (record.half === 1) {
+                        if (record.team === 'my') myFirst++;
+                        if (record.team === 'opponent') oppFirst++;
+                    } else if (record.half === 2) {
+                        if (record.team === 'my') mySecond++;
+                        if (record.team === 'opponent') oppSecond++;
+                    }
+                }
+            });
+
+            // 合計
+            const myTotal = myFirst + mySecond;
+            const oppTotal = oppFirst + oppSecond;
+
+            // 表示更新
+            document.getElementById('scoreDisplay').textContent = `${myTotal} - ${oppTotal}`;
+
+            document.getElementById('firstHalfScore').textContent = `${myFirst} - ${oppFirst}`;
+
+            document.getElementById('secondHalfScore').textContent = `${mySecond} - ${oppSecond}`;
+        }
+ 
+        // ========================================
+        // 状態のリセット
+        // ========================================
+
+        // 選択状態をすべてクリアする
+        function resetSelection() {
+            currentAction = null;
+            currentTeam = null;
+            currentPlayer = null;
+            currentLocation = null;
+
+            // 選手ボタンの選択表示を解除
+            document.querySelectorAll('.player-btn').forEach(btn => btn.classList.remove('selected'));
+        }
+
+        // ========================================
+        // 試合データのリセット
+        // ========================================
+
+        function resetMatchData() {
+            const ok = confirm(
+                "この試合のデータをリセットします。\n" +
+                "（得点・記録・統計・タイマー）\n" +
+                "※自チーム選手と試合時間設定は残ります。\n\n" +
+                "よろしいですか？"
+            );
+            if (!ok) return;
+
+            // 自チーム選手を退避
+            const savedPlayers = myTeamPlayers;
+            const savedHalfTime = halfTime;
+
+            // 試合系データを初期化
+            records = [];
+            timerSeconds = 0;
+            currentHalf = 1;
+
+            //退避した設定を戻す
+            myTeamPlayers = savedPlayers;
+            halfTime = savedHalfTime;
+
+            // 設定画面の入力欄も戻す（開いている/いないに関係なく整合が取れる）
+            const halfInput = document.getElementById("halfTimeInput");
+            if (halfInput) halfInput.value = String(savedHalfTime);
+
+            // 前半/後半ボタン表示を前半に戻す
+            const halfBtn = document.getElementById("halfBtn");
+            if (halfBtn) {
+                halfBtn.textContent = "前半";
+                halfBtn.classList.remove("second");
+                halfBtn.disabled = false; // リセット直後は切替可に
+            }
+
+            // 表示初期化
+            resetSelection?.();
+            resetTimer?.();
+            updateScoreDisplay?.();
+            updateStatus?.("試合データをリセットしました");
+
+            // LocalStorageへ再保存
+            saveToLocalStorage();
+
+            // 選手UIを再描画（必要なら）
+            renderPlayers?.();
+        }
+
+        // ========================================
+        // ユーティリティ関数
+        // ========================================
+
+        // 現在のタイマー時刻を文字列で返す
+        function getCurrentTimeString() {
+            const minutes = Math.floor(timerSeconds / 60);
+            const seconds = timerSeconds % 60;
+            return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }
+
+        // アクション名を日本語に変換
+        function getActionName(action) {
+            const names = {
+                'shoot': 'シュート',
+                '7m': '7mスロー',
+                'warning': '警告',
+                '2min': '2分間退場',
+                'expulsion': '追放'
+            };
+            return names[action] || action;
+        }
+
+        // チーム名を日本語に変換
+        function getTeamName(team) {
+            return team === 'my' ? '自チーム' : '相手チーム';
+        }
+
+        // ゴール位置名を日本語に変換
+        function getLocationName(location) {
+            const names = {
+                'left-top-out': '左上外',
+                'center-top-out': '真上外',
+                'right-top-out': '右上外',
+                'left-side-out': '左横外',
+                'right-side-out': '右横外',
+                'left-top-in': '左上',
+                'center-top-in': '中上',
+                'right-top-in': '右上',
+                'left-bottom-in': '左下',
+                'center-bottom-in': '中下',
+                'right-bottom-in': '右下'
+            };
+            return names[location] || location;
+        }
+
+        // シュート結果を日本語に変換
+        function getResultName(result) {
+            const names = {
+                'goal': '入った',
+                'saved': '止められた',
+                'miss': '外した'
+            };
+            return names[result] || result;
+        }
+
+        // 記録を読みやすい文字列に整形
+        function formatRecord(record) {
+            let text = `${record.time} ${getTeamName(record.team)} #${record.playerNumber} ${getActionName(record.action)}`;
+            if (record.location) {
+                text += ` (${getLocationName(record.location)})`;
+            }
+            if (record.result) {
+                text += ` → ${getResultName(record.result)}`;
+            }
+            return text;
+        }
+
+        // ステータス表示を更新
+        function updateStatus(message) {
+            document.getElementById('statusText').textContent = message;
+        }
+
+        // ========================================
+        // 設定モーダル
+        // ========================================
+
+        // 設定モーダルを開く
+        function openSettings() {
+            document.getElementById('settingsModal').classList.add('active');
+            document.getElementById('halfTimeInput').value = halfTime;
+            renderPlayersList();
+        }
+
+        // 設定モーダルを閉じる
+        function closeSettings() {
+            document.getElementById('settingsModal').classList.remove('active');
+        }
+
+        // 設定を保存
+        function saveSettings() {
+            halfTime = parseInt(document.getElementById('halfTimeInput').value);
+            saveToLocalStorage();
+            updateTimerDisplay();
+            renderPlayers();
+            closeSettings();
+            alert('設定を保存しました');
+        }
+
+        // 選手を追加
+        function addPlayer() {
+            const number = parseInt(document.getElementById('playerNumber').value);
+            const name = document.getElementById('playerName').value.trim();
+
+            if (!number || !name) {
+                alert('番号と名前を入力してください');
+                return;
+            }
+
+            // 重複チェック
+            if (myTeamPlayers.some(p => p.number === number)) {
+                alert('この番号は既に登録されています');
+                return;
+            }
+
+            // 選手を追加
+            myTeamPlayers.push({
+                number: number,
+                name: name,
+                isGK: (number === 1 || number === 12)  // 1番と12番は自動的にGK
+            });
+
+            // 番号順にソート
+            myTeamPlayers.sort((a, b) => a.number - b.number);
+
+            // 入力欄をクリア
+            document.getElementById('playerNumber').value = '';
+            document.getElementById('playerName').value = '';
+
+            // 一覧を再描画
+            renderPlayersList();
+        }
+
+        // 選手一覧を描画
+        function renderPlayersList() {
+            const container = document.getElementById('playersList');
+            container.innerHTML = '';
+
+            myTeamPlayers.forEach(player => {
+                const item = document.createElement('div');
+                item.className = 'player-item';
+                item.innerHTML = `
+                    <span>#${player.number} ${player.name}${player.isGK ? ' (GK)' : ''}</span>
+                    <button class="delete-btn" onclick="deletePlayer(${player.number})">削除</button>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        // 選手を削除
+        function deletePlayer(number) {
+            if (confirm('この選手を削除しますか？')) {
+                myTeamPlayers = myTeamPlayers.filter(p => p.number !== number);
+                renderPlayersList();
+            }
+        }
+
+        // ========================================
+        // 統計表示モーダル
+        // ========================================
+
+        // 統計モーダルを表示
+        function showStats() {
+            document.getElementById('statsModal').classList.add('active');
+            calculateStats();
+        }
+
+        // 統計モーダルを閉じる
+        function closeStats() {
+            document.getElementById('statsModal').classList.remove('active');
+        }
+
+        // タブを切り替える
+        function switchTab(tabName) {
+            // すべてのタブボタンとコンテンツから active クラスを削除
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+            // 選択されたタブをアクティブにする
+            event.target.classList.add('active');
+            document.getElementById(tabName + 'Tab').classList.add('active');
+        }
+
+        // 統計を計算して表示
+        function calculateStats() {
+            calculateTeamSummary();
+            calculatePlayerStats();
+            calculateKeeperStats();
+        }
+
+        // チームサマリーを計算
+        function calculateTeamSummary() {
+            const teams = ['my', 'opponent'];
+            
+            teams.forEach(team => {
+                const teamRecords = records.filter(r => r.team === team);
+                
+                // シュート系の記録のみを抽出
+                const shootRecords = teamRecords.filter(r => 
+                    (r.action === 'shoot' || r.action === '7m') && r.result
+                );
+                
+                const goals = shootRecords.filter(r => r.result === 'goal').length;
+                const saved = shootRecords.filter(r => r.result === 'saved').length;
+                const miss = shootRecords.filter(r => r.result === 'miss').length;
+                const totalShots = goals + saved + miss;
+                const successRate = totalShots > 0 ? Math.round((goals / totalShots) * 100) : 0;
+                
+                const warnings = teamRecords.filter(r => r.action === 'warning').length;
+                const twoMins = teamRecords.filter(r => r.action === '2min').length;
+                const expulsions = teamRecords.filter(r => r.action === 'expulsion').length;
+
+                const html = `
+                    <div class="stat-item">
+                        <span class="stat-label">得点</span>
+                        <span class="stat-value">${goals}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">シュート数</span>
+                        <span class="stat-value">${totalShots}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">成功率</span>
+                        <span class="stat-value">${successRate}%</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">警告</span>
+                        <span class="stat-value">${warnings}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">2分退場</span>
+                        <span class="stat-value">${twoMins}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">追放</span>
+                        <span class="stat-value">${expulsions}</span>
+                    </div>
+                `;
+
+                const containerId = team === 'my' ? 'myTeamSummary' : 'opponentTeamSummary';
+                document.getElementById(containerId).innerHTML = html;
+            });
+        }
+
+        // 選手別統計を計算
+        function calculatePlayerStats() {
+            // 自チームの選手別得点を集計
+            const playerGoals = {};
+            const playerShots = {};
+            
+            myTeamPlayers.forEach(player => {
+                playerGoals[player.number] = 0;
+                playerShots[player.number] = {goals: 0, total: 0};
+            });
+
+            records.forEach(record => {
+                if (record.team === 'my' && (record.action === 'shoot' || record.action === '7m')) {
+                    if (playerShots[record.playerNumber]) {
+                        playerShots[record.playerNumber].total++;
+                        if (record.result === 'goal') {
+                            playerGoals[record.playerNumber]++;
+                            playerShots[record.playerNumber].goals++;
+                        }
+                    }
+                }
+            });
+
+            // 得点ランキング（得点が多い順）
+            const sortedByGoals = Object.entries(playerGoals)
+                .filter(([num, goals]) => goals > 0)
+                .sort((a, b) => b[1] - a[1]);
+
+            let goalsHtml = '';
+            if (sortedByGoals.length === 0) {
+                goalsHtml = '<div class="stat-item"><span class="stat-label">まだ得点がありません</span></div>';
+            } else {
+                sortedByGoals.forEach(([playerNum, goals]) => {
+                    const player = myTeamPlayers.find(p => p.number == playerNum);
+                    const name = player ? player.name : `#${playerNum}`;
+                    goalsHtml += `
+                        <div class="bar-item">
+                            <div class="bar-label">${name}</div>
+                            <div class="bar-bg">
+                                <div class="bar-fill" style="width: ${(goals / sortedByGoals[0][1]) * 100}%">
+                                    ${goals}点
+                                </div>
+                            </div>
+                            <div class="bar-value">${goals}</div>
+                        </div>
+                    `;
+                });
+            }
+            document.getElementById('myTeamPlayerStats').innerHTML = goalsHtml;
+
+            // シュート成功率（シュート数が3本以上の選手のみ）
+            const sortedByRate = Object.entries(playerShots)
+                .filter(([num, data]) => data.total >= 3)
+                .map(([num, data]) => {
+                    const rate = Math.round((data.goals / data.total) * 100);
+                    return [num, rate, data.total, data.goals];
+                })
+                .sort((a, b) => b[1] - a[1]);
+
+            let rateHtml = '';
+            if (sortedByRate.length === 0) {
+                rateHtml = '<div class="stat-item"><span class="stat-label">データが不足しています（3本以上のシュートが必要）</span></div>';
+            } else {
+                sortedByRate.forEach(([playerNum, rate, total, goals]) => {
+                    const player = myTeamPlayers.find(p => p.number == playerNum);
+                    const name = player ? player.name : `#${playerNum}`;
+                    rateHtml += `
+                        <div class="bar-item">
+                            <div class="bar-label">${name}</div>
+                            <div class="bar-bg">
+                                <div class="bar-fill" style="width: ${rate}%">
+                                    ${rate}%
+                                </div>
+                            </div>
+                            <div class="bar-value">${goals}/${total}</div>
+                        </div>
+                    `;
+                });
+            }
+            document.getElementById('myTeamShootStats').innerHTML = rateHtml;
+        }
+
+        // キーパー統計を計算
+        function calculateKeeperStats() {
+            // 自チームのシュートに対する相手キーパーのセーブ率をエリア別に集計
+            const areaStats = {};
+            
+            // すべてのゴール位置を初期化
+            const locations = [
+                'left-top-in', 'center-top-in', 'right-top-in',
+                'left-bottom-in', 'center-bottom-in', 'right-bottom-in'
+            ];
+            
+            locations.forEach(loc => {
+                areaStats[loc] = {saved: 0, goal: 0, total: 0};
+            });
+
+            // 自チームのシュート（ゴール内）を集計
+            records.forEach(record => {
+                if (record.team === 'my' && 
+                    (record.action === 'shoot' || record.action === '7m') &&
+                    record.location && record.location.endsWith('-in')) {
+                    
+                    areaStats[record.location].total++;
+                    if (record.result === 'saved') {
+                        areaStats[record.location].saved++;
+                    } else if (record.result === 'goal') {
+                        areaStats[record.location].goal++;
+                    }
+                }
+            });
+
+            // セーブ率の高い順にソート
+            const sortedAreas = Object.entries(areaStats)
+                .filter(([loc, data]) => data.total > 0)
+                .map(([loc, data]) => {
+                    const saveRate = Math.round((data.saved / data.total) * 100);
+                    return [loc, saveRate, data.saved, data.total];
+                })
+                .sort((a, b) => b[1] - a[1]);
+
+            let areaHtml = '';
+            if (sortedAreas.length === 0) {
+                areaHtml = '<div class="stat-item"><span class="stat-label">ゴール内へのシュートがまだありません</span></div>';
+            } else {
+                sortedAreas.forEach(([location, rate, saved, total]) => {
+                    areaHtml += `
+                        <div class="bar-item">
+                            <div class="bar-label">${getLocationName(location)}</div>
+                            <div class="bar-bg">
+                                <div class="bar-fill" style="width: ${rate}%; background: linear-gradient(90deg, #ff6b6b, #ee5a6f);">
+                                    ${rate}%
+                                </div>
+                            </div>
+                            <div class="bar-value">${saved}/${total}</div>
+                        </div>
+                    `;
+                });
+            }
+            document.getElementById('keeperAreaStats').innerHTML = areaHtml;
+
+            // 弱点分析（セーブ率の低いエリア = 狙い目）
+            let analysisHtml = '';
+            if (sortedAreas.length > 0) {
+                const weakSpots = sortedAreas.filter(([loc, rate]) => rate < 50);
+                
+                if (weakSpots.length > 0) {
+                    analysisHtml += '<div class="stat-card" style="margin: 0;">';
+                    analysisHtml += '<div class="stat-title" style="color: #4ecdc4;">🎯 狙い目エリア（セーブ率50%未満）</div>';
+                    weakSpots.forEach(([location, rate, saved, total]) => {
+                        analysisHtml += `
+                            <div class="stat-item">
+                                <span class="stat-label">${getLocationName(location)}</span>
+                                <span class="stat-value">${rate}%（${saved}/${total}）</span>
+                            </div>
+                        `;
+                    });
+                    analysisHtml += '</div>';
+                } else {
+                    analysisHtml += '<div class="stat-item"><span class="stat-label">相手キーパーの弱点が見つかりません（全エリア50%以上のセーブ率）</span></div>';
+                }
+
+                // 最も得点しやすいエリア
+                const bestArea = sortedAreas[sortedAreas.length - 1];
+                analysisHtml += '<div class="stat-card" style="margin-top: 15px;">';
+                analysisHtml += '<div class="stat-title" style="color: #4ecdc4;">✨ 最も得点しやすいエリア</div>';
+                analysisHtml += `
+                    <div class="stat-item">
+                        <span class="stat-label">${getLocationName(bestArea[0])}</span>
+                        <span class="stat-value">セーブ率 ${bestArea[1]}%</span>
+                    </div>
+                `;
+                analysisHtml += '</div>';
+            } else {
+                analysisHtml = '<div class="stat-item"><span class="stat-label">データが不足しています</span></div>';
+            }
+            
+            document.getElementById('keeperAnalysis').innerHTML = analysisHtml;
+        }
+
+        // ========================================
+        // 記録表示モーダル
+        // ========================================
+
+        // 記録一覧を表示
+        function showRecords() {
+            document.getElementById('recordsModal').classList.add('active');
+            renderRecordsTable();
+        }
+
+        // 記録一覧を閉じる
+        function closeRecords() {
+            document.getElementById('recordsModal').classList.remove('active');
+        }
+
+        // 記録テーブルを描画
+        function renderRecordsTable() {
+            const tbody = document.getElementById('recordsTableBody');
+            tbody.innerHTML = '';
+
+            if (records.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">まだ記録がありません</td></tr>';
+                return;
+            }
+
+            records.forEach(record => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${record.time}</td>
+                    <td>${getTeamName(record.team)}</td>
+                    <td>#${record.playerNumber}</td>
+                    <td>${getActionName(record.action)}</td>
+                    <td>${record.location ? getLocationName(record.location) : '-'}</td>
+                    <td>${record.result ? getResultName(record.result) : '-'}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // ========================================
+        // CSV出力機能
+        // ========================================
+
+        // 記録をCSVファイルとしてダウンロード
+        function exportRecords() {
+            if (records.length === 0) {
+                alert('記録がありません');
+                return;
+            }
+
+            // CSVヘッダー
+            let csv = '時刻,チーム,選手番号,アクション,位置,結果\n';
+
+            // データ行を追加
+            records.forEach(record => {
+                csv += `${record.time},`;
+                csv += `${getTeamName(record.team)},`;
+                csv += `${record.playerNumber},`;
+                csv += `${getActionName(record.action)},`;
+                csv += `${record.location ? getLocationName(record.location) : ''},`;
+                csv += `${record.result ? getResultName(record.result) : ''}\n`;
+            });
+
+            // Blobを作成してダウンロード
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `handball_record_${new Date().toISOString().slice(0,10)}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            alert('CSV出力が完了しました');
+        }
+
+        // ========================================
+        // LocalStorage保存・読み込み
+        // ========================================
+
+        // データをLocalStorageに保存
+        function saveToLocalStorage() {
+            const data = {
+                halfTime: halfTime,
+                myTeamPlayers: myTeamPlayers,
+                records: records,
+                timerSeconds: timerSeconds
+            };
+            localStorage.setItem('handballRecorderData', JSON.stringify(data));
+        }
+
+        // LocalStorageからデータを読み込み
+        function loadFromLocalStorage() {
+            const savedData = localStorage.getItem('handballRecorderData');
+            if (!savedData) return;
+
+            try {
+                const data = JSON.parse(savedData);
+
+                // ハーフタイム
+                halfTime = typeof data.halfTime === "number" ? data.halfTime : 25;
+
+                // ★必ず配列チェック（今回の核心）
+                myTeamPlayers = Array.isArray(data.myTeamPlayers) ? data.myTeamPlayers : [];
+
+                // 記録
+                records = Array.isArray(data.records) ? data.records : [];
+
+                // タイマー
+                timerSeconds = typeof data.timerSeconds === "number" ? data.timerSeconds : 0;
+
+            } catch (e) {
+                console.error("データ読み込みエラー:", e);
+                myTeamPlayers = [];
+                records = [];
+                timerSeconds = 0;
+            }
+        }
+
+    </script>
+  <!-- ===== JavaScriptここまで ===== -->
+
+    <script>
+    if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("./service-worker.js");
+    }
+    </script>
+
+</body>
+</html>
