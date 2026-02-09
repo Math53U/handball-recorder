@@ -4,7 +4,7 @@ const CACHE_NAME = "handball-recorder-v1";
 // オフラインでも開けるようにキャッシュしたいファイル
 const FILES_TO_CACHE = [
   "./",
-  "./handballsystem.html",
+  "./index.html",
   "./manifest.json",
   "./service-worker.js"
 ];
@@ -35,3 +35,4 @@ self.addEventListener("fetch", (event) => {
     caches.match(event.request).then((cached) => cached || fetch(event.request))
   );
 });
+
