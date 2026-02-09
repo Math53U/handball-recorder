@@ -7,7 +7,7 @@
     <title>ハンドボール試合記録</title>
     
   <!-- ===== PWA関連 ===== -->
-  <link rel="manifest" href="manifest.json">
+  <link rel="manifest" href="/handball-recorder/manifest.json">
 
     <!-- ===== CSSここから ===== -->
     <style>
@@ -2160,9 +2160,10 @@
 
     <script>
     if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("./service-worker.js");
+        navigator.serviceWorker.register("/handball-recorder/service-worker.js", { scope: "/handball-recorder/" });
     }
     </script>
 
 </body>
 </html>
+
